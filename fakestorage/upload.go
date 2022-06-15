@@ -186,7 +186,7 @@ func (s *Server) insertFormObject(r *http.Request) xmlResponse {
 	defer obj.Close()
 
 	if successActionStatus == 201 {
-		objectURI := fmt.Sprintf("%s/%s%s", s.URL(), bucketName, name)
+		objectURI := fmt.Sprintf("%s/%s%s", s.URL(r), bucketName, name)
 		xmlBody := createXmlResponseBody(bucketName, obj.Etag, strings.TrimPrefix(name, "/"), objectURI)
 		return xmlResponse{status: successActionStatus, data: xmlBody}
 	}
@@ -435,7 +435,7 @@ func (s *Server) resumableUpload(bucketName string, r *http.Request) jsonRespons
 	header := make(http.Header)
 	location := fmt.Sprintf(
 		"%s/upload/storage/v1/b/%s/o?uploadType=resumable&name=%s&upload_id=%s",
-		s.URL(),
+		s.URL(r),
 		bucketName,
 		url.PathEscape(objName),
 		uploadID,

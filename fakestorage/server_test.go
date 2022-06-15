@@ -239,7 +239,7 @@ func TestNewServer(t *testing.T) {
 		{ObjectAttrs: ObjectAttrs{BucketName: "other-bucket", Name: "static/css/website.css"}},
 	})
 	defer server.Stop()
-	url := server.URL()
+	url := server.URL(nil)
 	if url != server.ts.URL {
 		t.Errorf("wrong url returned\nwant %q\ngot  %q", server.ts.URL, url)
 	}
@@ -252,7 +252,7 @@ func TestNewServerNoListener(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer server.Stop()
-	url := server.URL()
+	url := server.URL(nil)
 	if url != "" {
 		t.Errorf("unexpected non-empty url: %q", url)
 	}
@@ -265,7 +265,7 @@ func TestNewServerExternalHost(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer server.Stop()
-	url := server.URL()
+	url := server.URL(nil)
 	if url != "https://gcs.example.com" {
 		t.Errorf("wrong url returned\n want %q\ngot  %q", server.externalURL, url)
 	}
@@ -388,7 +388,7 @@ func TestDownloadAfterPublicHostChange(t *testing.T) {
 	}
 
 	client := server.HTTPClient()
-	requestURL := server.URL() + "/some-bucket/files/txt/text-01.txt"
+	requestURL := server.URL(nil) + "/some-bucket/files/txt/text-01.txt"
 
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
@@ -407,7 +407,7 @@ func TestDownloadAfterPublicHostChange(t *testing.T) {
 	}
 
 	// Now set the public host to match the httptest.Server and try again.
-	serverURL, err := url.Parse(server.URL())
+	serverURL, err := url.Parse(server.URL(nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -438,7 +438,7 @@ func TestDownloadPartialPublicHostMatch(t *testing.T) {
 	}
 
 	client := server.HTTPClient()
-	requestURL := server.URL() + "/some-bucket/files/txt/text-01.txt"
+	requestURL := server.URL(nil) + "/some-bucket/files/txt/text-01.txt"
 
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
@@ -464,9 +464,9 @@ func TestDownloadPartialHostValidationShouldntValidatePortPartially(t *testing.T
 	}
 
 	client := server.HTTPClient()
-	requestURL := server.URL() + "/some-bucket/files/txt/text-01.txt"
+	requestURL := server.URL(nil) + "/some-bucket/files/txt/text-01.txt"
 
-	serverURL, err := url.Parse(server.URL())
+	serverURL, err := url.Parse(server.URL(nil))
 	if err != nil {
 		t.Fatal(err)
 	}
