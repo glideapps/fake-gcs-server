@@ -397,7 +397,7 @@ func TestServerClientSimpleUpload(t *testing.T) {
 
 	const data = "some nice content"
 	const contentType = "text/plain"
-	req, err := http.NewRequest("POST", server.URL()+"/storage/v1/b/other-bucket/o?uploadType=media&name=some/nice/object.txt", strings.NewReader(data))
+	req, err := http.NewRequest("POST", server.URL(nil)+"/storage/v1/b/other-bucket/o?uploadType=media&name=some/nice/object.txt", strings.NewReader(data))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -439,7 +439,7 @@ func TestServerClientSignedUpload(t *testing.T) {
 	server.CreateBucketWithOpts(CreateBucketOpts{Name: "other-bucket"})
 	const data = "some nice content"
 	const contentType = "text/plain"
-	req, err := http.NewRequest("PUT", server.URL()+"/other-bucket/some/nice/object.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256", strings.NewReader(data))
+	req, err := http.NewRequest("PUT", server.URL(nil)+"/other-bucket/some/nice/object.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256", strings.NewReader(data))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -532,7 +532,7 @@ func TestServerClientUploadWithPredefinedAclPublicRead(t *testing.T) {
 	const data = "some nice content"
 	const contentType = "text/plain"
 	const contentEncoding = "gzip"
-	req, err := http.NewRequest("POST", server.URL()+"/storage/v1/b/other-bucket/o?predefinedAcl=publicRead&uploadType=media&name=some/nice/object.txt&contentEncoding="+contentEncoding, strings.NewReader(data))
+	req, err := http.NewRequest("POST", server.URL(nil)+"/storage/v1/b/other-bucket/o?predefinedAcl=publicRead&uploadType=media&name=some/nice/object.txt&contentEncoding="+contentEncoding, strings.NewReader(data))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -589,7 +589,7 @@ func TestServerClientSimpleUploadNoName(t *testing.T) {
 	server.CreateBucketWithOpts(CreateBucketOpts{Name: "other-bucket"})
 
 	const data = "some nice content"
-	req, err := http.NewRequest("POST", server.URL()+"/storage/v1/b/other-bucket/o?uploadType=media", strings.NewReader(data))
+	req, err := http.NewRequest("POST", server.URL(nil)+"/storage/v1/b/other-bucket/o?uploadType=media", strings.NewReader(data))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -614,7 +614,7 @@ func TestServerInvalidUploadType(t *testing.T) {
 	defer server.Stop()
 	server.CreateBucketWithOpts(CreateBucketOpts{Name: "other-bucket"})
 	const data = "some nice content"
-	req, err := http.NewRequest("POST", server.URL()+"/storage/v1/b/other-bucket/o?uploadType=bananas&name=some-object.txt", strings.NewReader(data))
+	req, err := http.NewRequest("POST", server.URL(nil)+"/storage/v1/b/other-bucket/o?uploadType=bananas&name=some-object.txt", strings.NewReader(data))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -698,7 +698,7 @@ func resumableUploadTest(t *testing.T, server *Server, bucketName string, upload
 
 	client := server.HTTPClient()
 
-	url := server.URL()
+	url := server.URL(nil)
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/upload/storage/v1/b/%s/o?name=testobj", url, bucketName), uploadRequestBody)
 	if err != nil {
 		t.Fatal(err)
@@ -793,7 +793,7 @@ func TestServerGzippedUpload(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			url := server.URL()
+			url := server.URL(nil)
 			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/upload/storage/v1/b/%s/o?name=testobj&uploadType=media", url, bucketName), &buf)
 			if err != nil {
 				t.Fatal(err)
@@ -868,7 +868,7 @@ func TestFormDataUpload(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req, err := http.NewRequest("POST", server.URL()+"/other-bucket", &buf)
+	req, err := http.NewRequest("POST", server.URL(nil)+"/other-bucket", &buf)
 	if err != nil {
 		t.Fatal(err)
 	}

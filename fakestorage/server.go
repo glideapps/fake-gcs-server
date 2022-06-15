@@ -286,10 +286,17 @@ func (s *Server) Stop() {
 	}
 }
 
-// URL returns the server URL.
-func (s *Server) URL() string {
+// URL returns the server URL, possibly using information from the passed Request
+// if one is given.
+func (s *Server) URL(r *http.Request) string {
 	if s.externalURL != "" {
 		return s.externalURL
+	}
+	if r != nil {
+		host := r.Host
+		if host != "" {
+			return fmt.Sprintf("%s://%s", s.scheme(), host)
+		}
 	}
 	if s.ts != nil {
 		return s.ts.URL

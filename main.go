@@ -40,7 +40,7 @@ func main() {
 	if err != nil {
 		logger.WithError(err).Fatal("couldn't start the server")
 	}
-	logger.Infof("server started at %s", server.URL())
+	logger.Infof("server started at %s", server.URL(nil))
 	for _, bucketName := range emptyBuckets {
 		server.CreateBucketWithOpts(fakestorage.CreateBucketOpts{Name: bucketName})
 	}
