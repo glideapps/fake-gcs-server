@@ -215,6 +215,46 @@ func (s *Server) buildMuxer() {
 	const apiPrefix = "/storage/v1"
 	s.mux = mux.NewRouter()
 
+	s.mux.Path(apiPrefix + "/b").Methods(http.MethodGet).HandlerFunc(jsonToHTTPHandler(s.listBuckets))
+	s.mux.Path(apiPrefix + "/b").Methods(http.MethodPost).HandlerFunc(jsonToHTTPHandler(s.createBucketByPost))
+	s.mux.MatcherFunc(s.publicHostMatcher).Path(apiPrefix + "/b").Methods(http.MethodGet).HandlerFunc(jsonToHTTPHandler(s.listBuckets))
+	s.mux.MatcherFunc(s.publicHostMatcher).Path(apiPrefix + "/b").Methods(http.MethodPost).HandlerFunc(jsonToHTTPHandler(s.createBucketByPost))
+	s.mux.Path("/b").Methods(http.MethodGet).HandlerFunc(jsonToHTTPHandler(s.listBuckets))
+	s.mux.Path("/b").Methods(http.MethodPost).HandlerFunc(jsonToHTTPHandler(s.createBucketByPost))
+	s.mux.MatcherFunc(s.publicHostMatcher).Path("/b").Methods(http.MethodGet).HandlerFunc(jsonToHTTPHandler(s.listBuckets))
+	s.mux.MatcherFunc(s.publicHostMatcher).Path("/b").Methods(http.MethodPost).HandlerFunc(jsonToHTTPHandler(s.createBucketByPost))
+
+	routers := []*mux.Router{
+		s.mux.PathPrefix(apiPrefix + "/b").Subrouter(),
+		s.mux.MatcherFunc(s.publicHostMatcher).PathPrefix(apiPrefix + "/b").Subrouter(),
+		// When using the GOOGLE_STORAGE_HOST env var in the official node-js library,
+		// it will not correctly prefix paths with the /storage/v1 api prefix.
+		// See https://github.com/googleapis/nodejs-storage/issues/1314, which was "fixed"
+		// by telling people not to use that env var anymore. Unfortunately that's not a good
+		// option for some people. So we just allow the bad paths to work anyway.
+		// Note that due to how we're using subrouters here, it needs to match after anything else
+		// to prevent conflicts.
+		s.mux.PathPrefix("/b").Subrouter(),
+		s.mux.MatcherFunc(s.publicHostMatcher).PathPrefix("/b").Subrouter(),
+	}
+
+	for _, r := range routers {
+		r.Path("/{bucketName}").Methods(http.MethodGet).HandlerFunc(jsonToHTTPHandler(s.getBucket))
+		r.Path("/{bucketName}").Methods(http.MethodDelete).HandlerFunc(jsonToHTTPHandler(s.deleteBucket))
+		r.Path("/{bucketName}/o").Methods(http.MethodGet).HandlerFunc(jsonToHTTPHandler(s.listObjects))
+		r.Path("/{bucketName}/o").Methods(http.MethodPost).HandlerFunc(jsonToHTTPHandler(s.insertObject))
+		r.Path("/{bucketName}/o/{objectName:.+}").Methods(http.MethodPatch).HandlerFunc(jsonToHTTPHandler(s.patchObject))
+		r.Path("/{bucketName}/o/{objectName:.+}/acl").Methods(http.MethodGet).HandlerFunc(jsonToHTTPHandler(s.listObjectACL))
+		r.Path("/{bucketName}/o/{objectName:.+}/acl").Methods(http.MethodPost).HandlerFunc(jsonToHTTPHandler(s.setObjectACL))
+		r.Path("/{bucketName}/o/{objectName:.+}/acl/{entity}").Methods(http.MethodPut).HandlerFunc(jsonToHTTPHandler(s.setObjectACL))
+		r.Path("/{bucketName}/o/{objectName:.+}").Methods(http.MethodGet, http.MethodHead).HandlerFunc(s.getObject)
+		r.Path("/{bucketName}/o/{objectName:.+}").Methods(http.MethodDelete).HandlerFunc(jsonToHTTPHandler(s.deleteObject))
+		r.Path("/{sourceBucket}/o/{sourceObject:.+}/copyTo/b/{destinationBucket}/o/{destinationObject:.+}").Methods(http.MethodPost).HandlerFunc(jsonToHTTPHandler(s.rewriteObject))
+		r.Path("/{sourceBucket}/o/{sourceObject:.+}/rewriteTo/b/{destinationBucket}/o/{destinationObject:.+}").Methods(http.MethodPost).HandlerFunc(jsonToHTTPHandler(s.rewriteObject))
+		r.Path("/{bucketName}/o/{destinationObject:.+}/compose").Methods(http.MethodPost).HandlerFunc(jsonToHTTPHandler(s.composeObject))
+		r.Path("/{bucketName}/o/{objectName:.+}").Methods(http.MethodPut, http.MethodPost).HandlerFunc(jsonToHTTPHandler(s.updateObject))
+	}
+
 	// Internal / update server configuration
 	s.mux.Path("/_internal/config").Methods(http.MethodPut).HandlerFunc(jsonToHTTPHandler(s.updateServerConfig))
 	s.mux.MatcherFunc(s.publicHostMatcher).Path("/_internal/config").Methods(http.MethodPut).HandlerFunc(jsonToHTTPHandler(s.updateServerConfig))
@@ -242,38 +282,6 @@ func (s *Server) buildMuxer() {
 	s.mux.Host(bucketHost).Path("/{objectName:.+}").Methods(http.MethodPost, http.MethodPut).HandlerFunc(jsonToHTTPHandler(s.insertObject))
 	s.mux.Host("{bucketName:.+}").Path("/{objectName:.+}").Methods(http.MethodPost, http.MethodPut).HandlerFunc(jsonToHTTPHandler(s.insertObject))
 
-	routers := []*mux.Router{
-		s.mux.PathPrefix(apiPrefix).Subrouter(),
-		s.mux.MatcherFunc(s.publicHostMatcher).PathPrefix(apiPrefix).Subrouter(),
-		// When using the GOOGLE_STORAGE_HOST env var in the official node-js library,
-		// it will not correctly prefix paths with the /storage/v1 api prefix.
-		// See https://github.com/googleapis/nodejs-storage/issues/1314, which was "fixed"
-		// by telling people not to use that env var anymore. Unfortunately that's not a good
-		// option for some people. So we just allow the bad paths to work anyway.
-		// Note that due to how we're using subrouters here, it needs to match after anything else
-		// to prevent conflicts.
-		s.mux,
-		s.mux.MatcherFunc(s.publicHostMatcher).Subrouter(),
-	}
-
-	for _, r := range routers {
-		r.Path("/b").Methods(http.MethodGet).HandlerFunc(jsonToHTTPHandler(s.listBuckets))
-		r.Path("/b").Methods(http.MethodPost).HandlerFunc(jsonToHTTPHandler(s.createBucketByPost))
-		r.Path("/b/{bucketName}").Methods(http.MethodGet).HandlerFunc(jsonToHTTPHandler(s.getBucket))
-		r.Path("/b/{bucketName}").Methods(http.MethodDelete).HandlerFunc(jsonToHTTPHandler(s.deleteBucket))
-		r.Path("/b/{bucketName}/o").Methods(http.MethodGet).HandlerFunc(jsonToHTTPHandler(s.listObjects))
-		r.Path("/b/{bucketName}/o").Methods(http.MethodPost).HandlerFunc(jsonToHTTPHandler(s.insertObject))
-		r.Path("/b/{bucketName}/o/{objectName:.+}").Methods(http.MethodPatch).HandlerFunc(jsonToHTTPHandler(s.patchObject))
-		r.Path("/b/{bucketName}/o/{objectName:.+}/acl").Methods(http.MethodGet).HandlerFunc(jsonToHTTPHandler(s.listObjectACL))
-		r.Path("/b/{bucketName}/o/{objectName:.+}/acl").Methods(http.MethodPost).HandlerFunc(jsonToHTTPHandler(s.setObjectACL))
-		r.Path("/b/{bucketName}/o/{objectName:.+}/acl/{entity}").Methods(http.MethodPut).HandlerFunc(jsonToHTTPHandler(s.setObjectACL))
-		r.Path("/b/{bucketName}/o/{objectName:.+}").Methods(http.MethodGet, http.MethodHead).HandlerFunc(s.getObject)
-		r.Path("/b/{bucketName}/o/{objectName:.+}").Methods(http.MethodDelete).HandlerFunc(jsonToHTTPHandler(s.deleteObject))
-		r.Path("/b/{sourceBucket}/o/{sourceObject:.+}/copyTo/b/{destinationBucket}/o/{destinationObject:.+}").Methods(http.MethodPost).HandlerFunc(jsonToHTTPHandler(s.rewriteObject))
-		r.Path("/b/{sourceBucket}/o/{sourceObject:.+}/rewriteTo/b/{destinationBucket}/o/{destinationObject:.+}").Methods(http.MethodPost).HandlerFunc(jsonToHTTPHandler(s.rewriteObject))
-		r.Path("/b/{bucketName}/o/{destinationObject:.+}/compose").Methods(http.MethodPost).HandlerFunc(jsonToHTTPHandler(s.composeObject))
-		r.Path("/b/{bucketName}/o/{objectName:.+}").Methods(http.MethodPut, http.MethodPost).HandlerFunc(jsonToHTTPHandler(s.updateObject))
-	}
 }
 
 // publicHostMatcher matches incoming requests against the currently specified server publicHost.
